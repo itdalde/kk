@@ -859,12 +859,18 @@ function searchData() {
   const filteredRows = fullDataCache.slice(1).filter(row => {
     let matchesKeyword = true;
     if (keyword) {
-      const candidates = [];
-      if (firstNameIdx >= 0) candidates.push(String(row[firstNameIdx] || ''));
-      if (middleNameIdx >= 0) candidates.push(String(row[middleNameIdx] || ''));
-      if (lastNameIdx >= 0) candidates.push(String(row[lastNameIdx] || ''));
-      if (emailIdx >= 0) candidates.push(String(row[emailIdx] || ''));
-      const searchText = candidates.join(' ').toLowerCase();
+      let searchText = '';
+      if (firstNameIdx >= 0 || middleNameIdx >= 0 || lastNameIdx >= 0 || emailIdx >= 0) {
+        const candidates = [];
+        if (firstNameIdx >= 0) candidates.push(String(row[firstNameIdx] || ''));
+        if (middleNameIdx >= 0) candidates.push(String(row[middleNameIdx] || ''));
+        if (lastNameIdx >= 0) candidates.push(String(row[lastNameIdx] || ''));
+        if (emailIdx >= 0) candidates.push(String(row[emailIdx] || ''));
+        searchText = candidates.join(' ').toLowerCase();
+      } else {
+        searchText = row.map(cell => String(cell || '').toLowerCase()).join(' ');
+      }
+
       matchesKeyword = searchText.includes(keyword);
     }
 

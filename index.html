@@ -1,109 +1,59 @@
-
-
-
 <!DOCTYPE html>
 <html>
 <head>
   <title>CRUD App</title>
   <style>
-    body { font-family: Arial; padding: 20px; }
-    input, button { padding: 8px; margin: 5px; }
-    table { border-collapse: collapse; width: 100%; margin-top: 20px;}
-    td, th { border: 1px solid #ccc; padding: 8px; }
-    th { background: #f4f4f4; }
+    body { font-family: Arial; margin: 20px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    input, button { padding: 5px; margin: 2px; }
   </style>
 </head>
 <body>
 
-<h2>CRUD App (Google Sheets)</h2>
+<h2>SK Camagong KKK Profiling</h2>
 
-<!-- SEARCH -->
-<input type="text" id="searchName" placeholder="Search name">
-<button onclick="search()">Search</button>
-<button onclick="loadData()">Refresh</button>
+<input type="text" id="searchInput" placeholder="Search..." />
+<button onclick="searchData()">Search</button>
+<button onclick="loadData()">Show All</button>
 
-<!-- FORM -->
-<h3>Add / Update</h3>
-<input type="text" id="name" placeholder="Name">
-<input type="number" id="age" placeholder="Age">
-<input type="text" id="address" placeholder="Address">
-<br>
-<button onclick="add()">Add</button>
-<button onclick="update()">Update</button>
-
-<!-- TABLE -->
-<table id="table">
-  <thead>
-    <tr>
-      <th>Name</th>
-      <th>Age</th>
-      <th>Address</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
-</table>
+<table id="dataTable"></table>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbze7IfC9xOG_jL2evRo4R7zH1W5AS-5rRrY_J31YMZkOMIdbUZDZhe-ebLyDOfJJ8Uf/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzFmf_zh5KaSGNeP0k7XE02dVd8AoZnaBq_PGBp-rGoU6axY7LGUIQh_apxd9578u4w/exec";
 
-
-async function loadData() {
-  const res = await fetch(`${API_URL}?action=search&name=${encodeURIComponent(name)}`);
-  const data = await res.json();
-  render(data);
+// --- LOAD ALL ---
+function loadData() {
+  const script = document.createElement("script");
+  script.src = `${API_URL}?action=list&callback=handleData`;
+  document.body.appendChild(script);
 }
 
-async function search() {
-  const name = document.getElementById("searchName").value;
-  const res = await fetch(`${API_URL}?action=search&name=${name}`);
-  const data = await res.json();
-  render(data);
+function handleData(data) {
+  const table = document.getElementById("dataTable");
+  table.innerHTML = "";
+  if (!data || data.error) {
+    table.innerHTML = "<tr><td colspan='5'>No data or error</td></tr>";
+    return;
+  }
+
+  const headers = data[0];
+  let html = "<tr>" + headers.map(h => `<th>${h}</th>`).join("") + "</tr>";
+  for(let i=1; i<data.length; i++){
+    html += "<tr>" + data[i].map(c => `<td>${c}</td>`).join("") + "</tr>";
+  }
+  table.innerHTML = html;
 }
 
-async function add() {
-  const payload = getFormData("add");
-  const res = await fetch(API_URL, {
-    method: "POST",
-    body: JSON.stringify(payload)
-  });
-  alert(await res.text());
-  loadData();
+// --- SEARCH ---
+function searchData() {
+  const name = document.getElementById("searchInput").value;
+  const script = document.createElement("script");
+  script.src = `${API_URL}?action=search&name=${encodeURIComponent(name)}&callback=handleData`;
+  document.body.appendChild(script);
 }
 
-async function update() {
-  const payload = getFormData("update");
-  const res = await fetch(API_URL, {
-    method: "POST",
-    body: JSON.stringify(payload)
-  });
-  alert(await res.text());
-  loadData();
-}
-
-function getFormData(action) {
-  return {
-    action,
-    name: document.getElementById("name").value,
-    age: document.getElementById("age").value,
-    address: document.getElementById("address").value
-  };
-}
-
-function render(data) {
-  const tbody = document.querySelector("#table tbody");
-  tbody.innerHTML = "";
-
-  data.forEach(row => {
-    const tr = `<tr>
-      <td>${row[0]}</td>
-      <td>${row[1]}</td>
-      <td>${row[2]}</td>
-    </tr>`;
-    tbody.innerHTML += tr;
-  });
-}
-
-// load on start
+// --- INITIAL LOAD ---
 loadData();
 </script>
 

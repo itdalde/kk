@@ -265,6 +265,7 @@ const SEARCH_DEBOUNCE = 400;
 
 let sortColumn = null;
 let sortAsc = true;
+let mobileEmptySearch = false;
 
 let onboardingStep = 0;
 let onboardingData = {};
@@ -848,12 +849,8 @@ function searchData() {
   }
 
   if (!keyword && !district) {
-    if (window.innerWidth <= 767) {
-      dataCache = [fullDataCache[0]]; // keep headers only
-      currentPage = 0;
-      renderPaginatedTable();
-      return;
-    }
+    // When search is cleared, show all data (reset to initial state)
+    mobileEmptySearch = false;
     dataCache = fullDataCache.slice();
     currentPage = 0;
     renderPaginatedTable();
@@ -888,9 +885,12 @@ function searchData() {
     return matchesKeyword && matchesDistrict;
   });
 
+  mobileEmptySearch = (window.innerWidth <= 767 && filteredRows.length === 0);
+
   dataCache = [fullDataCache[0], ...filteredRows];
   currentPage = 0;
   renderPaginatedTable();
+  return; 
 }
 
 // --- HANDLE DATA ---
@@ -912,10 +912,17 @@ function handleData(data) {
 
 function renderPaginatedTable() {
   const table = document.getElementById("dataTable");
+  const cardView = document.getElementById('cardView');
+  const tableContainer = document.getElementById('dataTable');
   table.innerHTML = "";
 
   if (!dataCache.length || dataCache.length < 2) {
-    table.innerHTML = "<tr><td class='p-4 text-center text-gray-700'>No records found.</td></tr>";
+    const message = mobileEmptySearch && window.innerWidth <= 767 ? 'No search results found.' : 'No records found.';
+    if (window.innerWidth <= 767) {
+      cardView.innerHTML = `<div class='p-4 text-center text-gray-700'>${message}</div>`;
+    } else {
+      table.innerHTML = `<tr><td class='p-4 text-center text-gray-700'>${message}</td></tr>`;
+    }
     document.getElementById("pagination").innerHTML = "";
     return;
   }
@@ -953,9 +960,6 @@ function renderPaginatedTable() {
   });
 
   const rowsData = dataCache.slice(1).map((row, idx) => ({ row, originalIndex: idx }));
-
-  const cardView = document.getElementById('cardView');
-  const tableContainer = document.getElementById('dataTable');
 
   if (window.innerWidth <= 767) {
     tableContainer.style.display = 'none';

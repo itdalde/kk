@@ -1,43 +1,49 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Katipunang Kabataan Profiling App</title>
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body { font-family: Arial; margin: 10px; }
-    input, button { padding: 6px; margin: 2px; font-size: 1em; }
-    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
-    th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
-    tr:nth-child(even) { background-color: #f9f9f9; }
-    @media (max-width: 600px) {
-      table, thead, tbody, th, td, tr { display: block; }
-      th { background: #eee; }
-      td { border: none; padding-left: 50%; position: relative; }
-      td:before { position: absolute; left: 6px; top: 6px; content: attr(data-label); font-weight: bold; }
-    }
-  </style>
+  <title>Katipunang Kabataan Profiling</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
+<body class="bg-gray-100 min-h-screen p-6">
 
-<h2>Katipunang Kabataan Profiling</h2>
+<div class="max-w-7xl mx-auto">
 
-<input type="text" id="searchInput" placeholder="Search..." />
-<button onclick="searchData()">Search</button>
-<button onclick="loadData()">Show All</button>
+  <!-- Header -->
+  <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">Katipunang Kabataan Profiling</h1>
 
-<h3>Add / Update</h3>
-<div id="formDiv">
-  <div id="formFields"></div>
-  <button onclick="submitForm()">Save</button>
-  <button onclick="resetForm()">Cancel</button>
+  <!-- Search bar -->
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6 space-y-2 md:space-y-0">
+    <input type="text" id="searchInput" placeholder="Search..." 
+           class="flex-1 p-3 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+    <div class="flex space-x-2 mt-2 md:mt-0">
+      <button onclick="searchData()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Search</button>
+      <button onclick="loadData()" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Show All</button>
+    </div>
+  </div>
+
+  <!-- Add / Update Form -->
+  <div class="bg-white p-6 rounded shadow mb-6">
+    <h2 class="text-xl font-semibold mb-4">Add / Update</h2>
+    <div id="formFields" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+    <div class="flex space-x-2 mt-4">
+      <button onclick="submitForm()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Save</button>
+      <button onclick="resetForm()" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="overflow-x-auto bg-white rounded shadow">
+    <table id="dataTable" class="min-w-full divide-y divide-gray-200"></table>
+  </div>
+
 </div>
-
-<table id="dataTable"></table>
 
 <script>
 const API_URL = "https://script.google.com/macros/s/AKfycbygWhzMHA9YqK9sNGh6NkxPt6KnZ9qR7F0SWWnQJSo_Ca2iDbda46oohQfBUb8an4sp/exec";
 let headers = [];
-let editingIndex = null; // track row being edited
+let editingIndex = null;
 
 // --- LOAD ALL ---
 function loadData() {
@@ -52,25 +58,29 @@ function handleData(data) {
   table.innerHTML = "";
 
   if (!data || data.error) {
-    table.innerHTML = "<tr><td colspan='5'>No data / error</td></tr>";
+    table.innerHTML = "<tr><td class='p-4'>No data or error</td></tr>";
     return;
   }
 
   headers = data[0];
-  let html = "<tr>" + headers.map(h => `<th>${h}</th>`).join("") + "<th>Actions</th></tr>";
+  let html = "<thead class='bg-gray-50'><tr>";
+  headers.forEach(h => html += `<th class="px-4 py-2 text-left text-sm font-medium text-gray-700">${h}</th>`);
+  html += "<th class='px-4 py-2 text-left text-sm font-medium text-gray-700'>Actions</th></tr></thead><tbody class='divide-y divide-gray-200'>";
 
   for (let i = 1; i < data.length; i++) {
     html += "<tr>";
-    for (let j = 0; j < data[i].length; j++) {
-      html += `<td data-label="${headers[j]}">${data[i][j]}</td>`;
-    }
-    html += `<td>
-      <button onclick="editRow(${i-1})">Edit</button>
-      <button onclick="deleteRow(${i-1})">Delete</button>
-    </td></tr>`;
+    data[i].forEach((cell,j) => {
+      html += `<td data-label="${headers[j]}" class="px-4 py-2 text-sm text-gray-600">${cell}</td>`;
+    });
+    html += `<td class="px-4 py-2 text-sm space-x-1">
+               <button onclick="editRow(${i-1})" class="bg-yellow-400 text-white px-2 py-1 rounded hover:bg-yellow-500">Edit</button>
+               <button onclick="deleteRow(${i-1})" class="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600">Delete</button>
+             </td></tr>`;
   }
 
+  html += "</tbody>";
   table.innerHTML = html;
+
   renderFormFields();
 }
 
@@ -79,11 +89,18 @@ function renderFormFields() {
   const container = document.getElementById("formFields");
   container.innerHTML = "";
   headers.forEach(h => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "flex flex-col";
+    const label = document.createElement("label");
+    label.innerText = h;
+    label.className = "text-gray-700 font-medium mb-1";
     const input = document.createElement("input");
     input.id = "field_" + h;
     input.placeholder = h;
-    container.appendChild(input);
-    container.appendChild(document.createElement("br"));
+    input.className = "p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500";
+    wrapper.appendChild(label);
+    wrapper.appendChild(input);
+    container.appendChild(wrapper);
   });
 }
 

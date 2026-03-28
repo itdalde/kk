@@ -965,15 +965,17 @@ function renderPaginatedTable() {
       if (middleNameIdx >= 0 && row[middleNameIdx]) fullName.push(row[middleNameIdx]);
       if (lastNameIdx >= 0 && row[lastNameIdx]) fullName.push(row[lastNameIdx]);
 
-      cardHtml += `<div class="card-row-header"><div><strong>${fullName.join(' ') || 'No Name'}</strong></div><div><button class="bg-yellow-400 text-white px-2 py-1 text-xs rounded" onclick="editRow(${entry.originalIndex})">Edit</button><button class="bg-red-500 text-white px-2 py-1 text-xs rounded" onclick="deleteRow(${entry.originalIndex})">Delete</button></div></div>`;
+      cardHtml += `<div class="card-row-header"><div><strong>${fullName.join(' ') || 'No Name'}</strong></div><div class="flex flex-col gap-1"><button class="bg-yellow-400 text-white px-2 py-1 text-xs rounded" onclick="editRow(${entry.originalIndex})">Edit</button><button class="bg-red-500 text-white px-2 py-1 text-xs rounded" onclick="deleteRow(${entry.originalIndex})">Delete</button></div></div>`;
 
       displayColumns.forEach(col => {
         if (col.type === 'fullname') return;
         let value = row[col.index] || '';
-        if (/birth\s*date/i.test(col.label)) {
+        let label = col.label;
+        if (/birth\s*date/i.test(label)) {
           value = formatBirthDate(value);
+          label = label.replace(/\s*\(mm\/?dd\/?yyyy\)\)?/i, '').trim();
         }
-        cardHtml += `<div class="card-row-field"><span class="font-semibold">${col.label}</span><span>${value}</span></div>`;
+        cardHtml += `<div class="card-row-field"><span class="font-semibold">${label}</span><span>${value}</span></div>`;
       });
 
       cardHtml += '</div>';

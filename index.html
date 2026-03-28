@@ -44,13 +44,11 @@
 </table>
 
 <script>
-const API_URL = "https://api.allorigins.win/raw?url=https://script.google.com/macros/s/AKfycbzRpOQWh28PpiG6Qa3y279ffJYst5iWmsJHKQYu039EZM9oQczian2pERyEuzpDsmlc/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbze7IfC9xOG_jL2evRo4R7zH1W5AS-5rRrY_J31YMZkOMIdbUZDZhe-ebLyDOfJJ8Uf/exec";
+
 
 async function loadData() {
-  const res = await fetch(`${API_URL}?action=list`, {
-  method: "GET",
-  mode: "no-cors"
-});
+  const res = await fetch(`${API_URL}?action=search&name=${encodeURIComponent(name)}`);
   const data = await res.json();
   render(data);
 }

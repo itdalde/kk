@@ -259,6 +259,7 @@ let editingRowData = null;
 let editingRecordId = null;
 let dataCache = [];
 let fullDataCache = [];
+let dataRowIndexMap = []; // map filtered index -> fullDataCache index
 let currentPage = 0;
 const pageSize = 8;
 let searchTimeout = null;
@@ -279,7 +280,7 @@ const onboardingSteps = [
       { label: 'Last Name', type: 'text', id: 'Last Name', required: true },
       { label: 'District', type: 'text', id: 'District' },
       { label: 'Gender', type: 'select', id: 'Gender', options: ['Male', 'Female', 'Other'] },
-      { label: 'Birthdate (mm/dd/yyyy)', type: 'date', id: 'Birthdate' },
+      { label: 'Birthdate (mm/dd/yyyy)', type: 'date', id: 'BIRTHDATE (mm/dd/yyyy)' },
       { label: 'Age', type: 'number', id: 'Age', min: 1 },
       { label: 'E-mail Address', type: 'email', id: 'E-mail Address' },
       { label: 'Contact No.', type: 'tel', id: 'Contact No.' }
@@ -319,10 +320,10 @@ const onboardingSteps = [
 'MASTERS GRADUATE',
 'DOCTORATE LEVEL'
 ] },
-      { label: 'Registered SK Voter?', type: 'select', id: 'Registered SK Voter', options: ['Yes', 'No'] },
-      { label: 'Registered National Voter?', type: 'select', id: 'Registered National Voter', options: ['Yes', 'No'] },
-      { label: 'Did You Vote Last SK Election?', type: 'select', id: 'Did You Vote Last SK Election', options: ['Yes', 'No'] },
-      { label: 'Have You Already Attended A KK Assembly?', type: 'select', id: 'Have You Already Attended A KK Assembly', options: ['Yes', 'No'] }
+      { label: 'Registered SK Voter?', type: 'select', id: 'Registered SK Voter?', options: ['Yes', 'No'] },
+      { label: 'Registered National Voter?', type: 'select', id: 'Registered National Voter?', options: ['Yes', 'No'] },
+      { label: 'Did You Vote Last SK Election?', type: 'select', id: 'DID YOU VOTE LAST SK ELECTION?', options: ['Yes', 'No'] },
+      { label: 'Have You Already Attended A KK Assembly?', type: 'select', id: 'HAVE YOU ALREADY ATTENDED A KK ASSEMBLY?', options: ['Yes', 'No'] }
     ]
   },
   {
@@ -910,6 +911,7 @@ function searchData() {
     // When search is cleared, show all data (reset to initial state)
     mobileEmptySearch = false;
     dataCache = fullDataCache.slice();
+    dataRowIndexMap = fullDataCache.slice(1).map((_, idx) => idx);
     currentPage = 0;
     renderPaginatedTable();
     return;
@@ -921,7 +923,8 @@ function searchData() {
   const lastNameIdx = headers.findIndex(h => /last\s*name/i.test(h));
   const emailIdx = headers.findIndex(h => /e-?mail/i.test(h));
 
-  const filteredRows = fullDataCache.slice(1).filter(row => {
+  const fullRows = fullDataCache.slice(1).map((row, fullIndex) => ({ row, fullIndex }));
+  const filtered = fullRows.filter(({ row }) => {
     let matchesKeyword = true;
     if (keyword) {
       let searchText = '';
@@ -935,17 +938,16 @@ function searchData() {
       } else {
         searchText = row.map(cell => String(cell || '').toLowerCase()).join(' ');
       }
-
       matchesKeyword = searchText.includes(keyword);
     }
-
     const matchesDistrict = !district || (districtIdx >= 0 && String(row[districtIdx] || '').trim().toLowerCase() === district);
     return matchesKeyword && matchesDistrict;
   });
 
-  mobileEmptySearch = (window.innerWidth <= 767 && filteredRows.length === 0);
+  mobileEmptySearch = (window.innerWidth <= 767 && filtered.length === 0);
 
-  dataCache = [fullDataCache[0], ...filteredRows];
+  dataCache = [fullDataCache[0], ...filtered.map(item => item.row)];
+  dataRowIndexMap = filtered.map(item => item.fullIndex);
   currentPage = 0;
   renderPaginatedTable();
   return; 
@@ -962,6 +964,7 @@ function handleData(data) {
 
   fullDataCache = data;
   dataCache = data.slice();
+  dataRowIndexMap = fullDataCache.slice(1).map((_, idx) => idx);
   headers = dataCache[0] || [];
   currentPage = 0;
   populateDistrictFilter();
@@ -978,8 +981,10 @@ function renderPaginatedTable() {
     const message = mobileEmptySearch && window.innerWidth <= 767 ? 'No search results found.' : 'No records found.';
     if (window.innerWidth <= 767) {
       cardView.innerHTML = `<div class='p-4 text-center text-gray-700'>${message}</div>`;
+      table.innerHTML = '';
     } else {
       table.innerHTML = `<tr><td class='p-4 text-center text-gray-700'>${message}</td></tr>`;
+      cardView.innerHTML = '';
     }
     document.getElementById("pagination").innerHTML = "";
     return;
@@ -1006,18 +1011,27 @@ function renderPaginatedTable() {
   const lastNameIdx = headers.findIndex(h => /last\s*name/i.test(h));
 
   const displayColumns = [];
+  // Exclude ID/No. columns (case-insensitive)
+  const idColIdx = headers.findIndex(h => /^(id|no\.?|number)$/i.test(h.trim()));
   if (firstNameIdx >= 0 || middleNameIdx >= 0 || lastNameIdx >= 0) {
     displayColumns.push({ type: 'fullname', label: 'Full Name', indexes: [firstNameIdx, middleNameIdx, lastNameIdx] });
   }
-
   headers.forEach((h, idx) => {
     const lower = h.trim().toLowerCase();
     if (idx === firstNameIdx || idx === middleNameIdx || idx === lastNameIdx) return;
     if (hiddenFields.has(lower)) return;
+    if (idx === idColIdx) return; // Hide ID/No. column
     displayColumns.push({ type: 'field', label: h, index: idx });
   });
 
-  const rowsData = dataCache.slice(1).map((row, idx) => ({ row, originalIndex: idx }));
+  // Filter out rows with empty first name
+  const rowsData = dataCache.slice(1)
+    .map((row, idx) => ({ row, originalIndex: idx }))
+    .filter(entry => {
+      if (firstNameIdx < 0) return true;
+      const val = String(entry.row[firstNameIdx] || '').trim();
+      return val.length > 0;
+    });
 
   if (window.innerWidth <= 767) {
     tableContainer.style.display = 'none';
@@ -1397,7 +1411,8 @@ function showToast(message, type = 'success') {
 
 // --- EDIT ROW ---
 function editRow(index) {
-  editingIndex = index;
+  const mappedRowIndex = (typeof dataRowIndexMap[index] === 'number') ? dataRowIndexMap[index] : index;
+  editingIndex = mappedRowIndex;
   const row = dataCache[index + 1];
   if (!row) return;
 
@@ -1406,13 +1421,11 @@ function editRow(index) {
     rowData[h] = row[i] || '';
   });
 
-  // Try to get ID from first column (assumes ID column exists)
-  // Common ID column names: 'ID', 'Id', 'id'
-  const idHeaderIdx = headers.findIndex(h => /^id$/i.test(h.trim()));
+  // Try to get ID from first column (ID/No/Number-like fields)
+  const idHeaderIdx = headers.findIndex(h => /^(id|no\.?|number)$/i.test(h.trim()));
   if (idHeaderIdx >= 0 && row[idHeaderIdx]) {
     editingRecordId = String(row[idHeaderIdx]).trim();
   } else {
-    // Fallback: use row index (rowIndex in Google Sheets is index + 2)
     editingRecordId = null;
   }
 
@@ -1433,7 +1446,9 @@ function populateForm(row) {
 // --- DELETE ROW ---
 function deleteRow(index) {
   if (!confirm("Are you sure to delete this row?")) return;
-  postAction("delete", {rowIndex: index}, loadData);
+
+  const mappedRowIndex = (typeof dataRowIndexMap[index] === 'number') ? dataRowIndexMap[index] : index;
+  postAction("delete", {rowIndex: mappedRowIndex}, loadData);
 }
 
 function setSortBy(columnIndex) {

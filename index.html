@@ -478,7 +478,14 @@ function setFieldValue(fieldId, value) {
 }
 
 function normalizeKey(key) {
-  return String(key || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  if (!key) return '';
+  const normalized = String(key).toLowerCase().trim();
+  // Keep `email` and common label forms stable: e-mail -> email, email address -> email address.
+  const noHyphen = normalized.replace(/[\-_]+/g, '');
+  return noHyphen
+    .replace(/[^a-z0-9\s]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
 }
 
 function toSentenceCase(str) {
@@ -524,7 +531,15 @@ const canonicalHeaderSynonyms = {
 
 function findMatchingHeader(fieldKey, headerMap) {
   const normalized = normalizeKey(fieldKey);
+  const sanitizedFieldKey = normalized.replace(/[^a-z0-9]/g, '');
+
   if (headerMap[normalized]) return headerMap[normalized];
+
+  for (const header of Object.keys(headerMap)) {
+    if (header.replace(/[^a-z0-9]/g, '') === sanitizedFieldKey) {
+      return headerMap[header];
+    }
+  }
 
   for (const canonical in canonicalHeaderSynonyms) {
     const aliases = canonicalHeaderSynonyms[canonical];
@@ -587,6 +602,13 @@ function getValueFromObject(key, sourceObj) {
   const normalizedKey = normalizeKey(key);
   for (const k in sourceObj) {
     if (normalizeKey(k) === normalizedKey) {
+      return String(sourceObj[k] || '').trim();
+    }
+  }
+  // Allow alternatives like 'E-mail Address' -> 'email address'
+  const altKey = normalizedKey.replace(/\s+/g, '');
+  for (const k in sourceObj) {
+    if (normalizeKey(k).replace(/\s+/g, '') === altKey) {
       return String(sourceObj[k] || '').trim();
     }
   }
@@ -946,18 +968,24 @@ function buildRowObjFromOnboarding() {
     }
   });
 
-  // Sync email values across legacy field names (e-mail address / email address / email)
-  const emailVariations = ['E-mail Address', 'email address', 'email', 'e-mail', 'e-mail address'];
+  // Sync email values across legacy field names (E-mail Address / Email Address / email)
+  const emailVariations = ['E-mail Address', 'Email Address', 'email address', 'email', 'e-mail', 'e-mail address', 'Email Address'];
   let emailValue = '';
+
+  const formEmail = getFieldValueById('E-mail Address') || getFieldValueById('Email Address') || getFieldValueById('email address') || getFieldValueById('email') || getFieldValueById('Email Address');
+
   for (const h of headers) {
     const lower = normalizeKey(h);
-    if (emailVariations.some(e => normalizeKey(e) === lower)) {
-      if (rowObj[h]) {
-        emailValue = rowObj[h];
-        break;
-      }
+    if (emailVariations.some(e => normalizeKey(e) === lower) && rowObj[h]) {
+      emailValue = rowObj[h];
+      break;
     }
   }
+
+  if (!emailValue && formEmail) {
+    emailValue = formEmail;
+  }
+
   if (emailValue) {
     for (const h of headers) {
       const lower = normalizeKey(h);
@@ -965,6 +993,11 @@ function buildRowObjFromOnboarding() {
         rowObj[h] = emailValue;
       }
     }
+
+    // Ensure all known variants are set in the payload
+    ['E-mail Address', 'Email Address', 'email address', 'email', 'e-mail', 'e-mail address', 'Email Address'].forEach(k => {
+      rowObj[k] = emailValue;
+    });
   }
 
   return rowObj;
@@ -1106,7 +1139,7 @@ function renderPaginatedTable() {
   const hiddenFields = new Set([
     'date','id', 'gender', 'age', 'contact no', 'civil status',
     'youth classification', 'youth age group', 'work status', 'educational background',
-    'e-mail address', 'registered sk voter', 'registered sk voter?',
+    'email address', 'registered sk voter', 'registered sk voter?',
     'registered national voter', 'registered national voter?',
     'did you vote last sk election', 'did you vote last sk election?',
     'have you already attended a kk assembly', 'have you already attended a kk assembly?',
@@ -1438,7 +1471,6 @@ function renderFormFields() {
 function submitForm() {
   saveCurrentStepData();
   const rowObj = buildRowObjFromOnboarding();
-
   // Only set date field to today for NEW records (mm/dd/yyyy)
   if (editingIndex === null) {
     const now = new Date();

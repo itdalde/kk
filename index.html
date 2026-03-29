@@ -350,10 +350,10 @@ const onboardingSteps = [
     ]
   },
   {
-    title: 'KKK ADDITIONAL INFORMATION',
+    title: 'ADDITIONAL INFORMATION',
     fields: [
       { label: 'YES, HOW MANY TIMES?', type: 'select', id: 'IF YES, HOW MANY TIMES?', options: ['1-2 TIMES', '3-4 TIMES', '5 AND ABOVE'] },
-      { label: 'Concern:', type: 'textarea', id: 'KKK Concern:' },
+      { label: 'Concern:', type: 'textarea', id: 'KK Concern:' },
       { label: 'Suggestion:', type: 'textarea', id: 'Suggestion' },      
       { label: 'NO, WHY?', type: 'textarea', id: 'IF NO, WHY?' },
       { label: 'Concern:', type: 'textarea', id: 'Concern:' },
@@ -750,7 +750,7 @@ function renderOnboardingForm() {
 
   function shouldShowField(field) {
     const idNorm = normalizeKey(field.id);
-    if (['if no, why?', 'kkk concern:', 'suggestion:'].includes(idNorm)) {
+    if (['if no, why?', 'kk concern:', 'suggestion:'].includes(idNorm)) {
       return assemblyValue.toLowerCase() === 'no';
     }
     if (['if yes, how many times?', 'concern:', 'suggestion'].includes(idNorm)) {
@@ -1121,7 +1121,7 @@ function renderPaginatedTable() {
     'did you vote last sk election', 'did you vote last sk election?',
     'have you already attended a kk assembly', 'have you already attended a kk assembly?',
     'if yes, how many times', 'if yes, how many times?',
-    'concern:', 'if no, why', 'if no, why?', 'KKK Concern:', 'suggestion:', 'suggestion'
+    'concern:', 'if no, why', 'if no, why?', 'KK Concern:', 'suggestion:', 'suggestion'
   ].map(s => s.toLowerCase()));
 
   const firstNameIdx = headers.findIndex(h => /first\s*name/i.test(h));

@@ -667,10 +667,27 @@ function getFieldValueById(fieldId) {
 function validateCurrentStep() {
   const step = onboardingSteps[onboardingStep];
   for (const field of step.fields) {
-    if (field.required) {
-      const value = getFieldValue(field.id);
-      if (!value || value.trim() === 'null') {
-        showToast(`${field.label} is required.`, 'danger');
+    const value = getFieldValue(field.id);
+
+    if (field.required && (!value || value.trim() === 'null')) {
+      showToast(`${field.label} is required.`, 'danger');
+      return false;
+    }
+
+    if (field.type === 'email' && value) {
+      const emailRe = /^\S+@\S+\.\S+$/;
+      if (!emailRe.test(value)) {
+        showToast('Please enter a valid email address.', 'danger');
+        return false;
+      }
+    }
+
+    if (/contact\s*no\.?/i.test(field.id) && value) {
+      // Philippine mobile phone numbers: +63 9xx xxx xxxx or 09xx xxx xxxx
+      const phRe = /^(\+63|0)9\d{9}$/;
+      const normalized = value.replace(/[^0-9+]/g, '');
+      if (!phRe.test(normalized)) {
+        showToast('Please enter a valid Philippine mobile number (example: 09171234567 or +639171234567).', 'danger');
         return false;
       }
     }
